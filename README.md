@@ -1,3 +1,5 @@
+![Banner](banner.png)
+
 # dso-credit-card-number-masker
 Masks credit card numbers within text files, replacing all but the last four digits with 'X' characters. Useful for redacting sensitive financial data from documents and logs. - Focused on Tools for sanitizing and obfuscating sensitive data within text files and structured data formats
 
