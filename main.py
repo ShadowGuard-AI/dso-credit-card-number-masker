@@ -2,6 +2,7 @@ import argparse
 import logging
 import re
 import os
+import sys
 import chardet
 
 # Configure logging
@@ -39,10 +40,20 @@ def mask_credit_card_number(text):
     
     def mask_match(match):
         cc_number = match.group(0)
-        if len(cc_number) < 4:
-          return "X" * len(cc_number)
-        else:
-          return "X" * (len(cc_number) - 4) + cc_number[-4:]
+        # Only digit characters are masked. The old version counted every
+        # character, so the spaces and dashes that group a card number were
+        # replaced too and the masked text lost the shape of the original.
+        digits = [c for c in cc_number if c.isdigit()]
+        keep = set(range(len(digits) - 4, len(digits))) if len(digits) > 4 else set()
+        out = []
+        pos = 0
+        for c in cc_number:
+            if c.isdigit():
+                out.append(c if pos in keep else "X")
+                pos += 1
+            else:
+                out.append(c)
+        return "".join(out)
 
     return re.sub(cc_regex, mask_match, text)
 
@@ -93,8 +104,10 @@ def process_file(input_file, output_file=None):
 
     except FileNotFoundError:
         logging.error(f"File not found: {input_file}")
+        raise
     except Exception as e:
         logging.error(f"An error occurred: {e}")
+        raise
 
 
 def main():
@@ -116,7 +129,7 @@ def main():
     # Validate input file
     if not os.path.isfile(args.input_file):
         logging.error(f"Invalid input file: {args.input_file}")
-        return
+        sys.exit(1)
       
     #Validate input file
     if args.output_file:
@@ -124,7 +137,10 @@ def main():
             logging.warning(f"Output file {args.output_file} already exists.  Will overwrite")
     
 
-    process_file(args.input_file, args.output_file)
+    try:
+        process_file(args.input_file, args.output_file)
+    except Exception:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
