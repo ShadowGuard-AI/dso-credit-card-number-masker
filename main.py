@@ -35,7 +35,13 @@ def mask_credit_card_number(text):
     Returns:
         str: The string with credit card numbers masked.
     """
-    # Credit card number regex (simplified for demonstration, adjust as needed for better accuracy)
+    # The pattern is shape only, 13 to 16 digits with spaces or dashes
+    # allowed between them, and there is no checksum anywhere in this
+    # file: I verified a 13 digit order number is masked exactly like a
+    # card, while a 19 digit run is left completely alone, because no
+    # 13 to 16 digit window inside it ends on a word boundary. A number
+    # split across a line break is also invisible, since the separator
+    # class holds a space and a dash but no newline.
     cc_regex = r"\b(?:\d[ -]*?){13,16}\b"
     
     def mask_match(match):
@@ -79,6 +85,11 @@ def process_file(input_file, output_file=None):
             logging.error(f"Failed to detect encoding for {input_file}. Using UTF-8 as fallback.")
             encoding = 'utf-8'
 
+        # Both upgrades below silently re-encode the file on the way out.
+        # For windows-1252 that changes the bytes of every non-ASCII
+        # character, even in a file where no card was found, and nothing
+        # counts the replacements, so a no match run rewrites the file,
+        # possibly in a new encoding, and reports success like any other.
         if encoding.lower() == 'ascii': #ascii is very limited; may be better to upgrade it to utf-8
             encoding = 'utf-8'
 
@@ -93,6 +104,9 @@ def process_file(input_file, output_file=None):
         
         masked_content = mask_credit_card_number(content)
         
+        # With no output file the input is overwritten in place; that is
+        # this tool's documented default, not an oversight, and it is a
+        # truncating write, so a failure mid write leaves the file partial.
         if output_file:
             with open(output_file, 'w', encoding=encoding) as outfile:
                 outfile.write(masked_content)
